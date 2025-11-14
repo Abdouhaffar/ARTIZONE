@@ -1,65 +1,80 @@
 import React, { useState } from "react";
-import UploadImage from "./UploadImage";
-import { db, auth } from "../firebaseConfig";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db, storage, auth } from "../firebaseConfig";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useNavigate } from "react-router-dom";
 
 export default function VipPayment() {
-  const [plan, setPlan] = useState("month1");
-  const [proofUrl, setProofUrl] = useState("");
+  const nav = useNavigate();
+  const [plan, setPlan] = useState("1m");
+  const [file, setFile] = useState(null);
   const [msg, setMsg] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const prices = {
-    month1: 300,
-    months6: 1500,
-    year12: 2500
+    "1m": 300,
+    "6m": 1500,
+    "12m": 2500,
   };
 
-  const submitVip = async () => {
-    if (!auth.currentUser) return setMsg("يجب تسجيل الدخول.");
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!auth.currentUser) return setMsg("❌ يجب تسجيل الدخول أولاً");
+
+    setLoading(true);
 
     try {
+      let url = "";
+
+      if (file) {
+        const r = ref(storage, `vipProofs/${auth.currentUser.uid}/${file.name}`);
+        await uploadBytes(r, file);
+        url = await getDownloadURL(r);
+      }
+
       await addDoc(collection(db, "vipRequests"), {
         uid: auth.currentUser.uid,
         plan,
         price: prices[plan],
-        proofUrl,
+        proofUrl: url,
         status: "pending",
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
       });
 
-      setMsg("✔ تم إرسال طلب VIP وسيتم مراجعته قريباً");
+      setMsg("✔ تم إرسال طلبك، سيتم مراجعته قريباً.");
+      setTimeout(() => nav("/"), 1500);
     } catch (err) {
-      console.error(err);
-      setMsg("حدث خطأ أثناء الإرسال");
+      setMsg("❌ حدث خطأ.");
     }
+
+    setLoading(false);
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>✨ الاشتراك المميز VIP</h2>
+    <div className="page">
+      <h2>الدفع للترقية</h2>
 
-      <label>اختر الخطة:</label>
-      <select
-        value={plan}
-        onChange={(e) => setPlan(e.target.value)}
-        style={{ display: "block", marginTop: 10 }}
-      >
-        <option value="month1">1 شهر — 300 دج</option>
-        <option value="months6">6 أشهر — 1500 دج</option>
-        <option value="year12">12 شهر — 2500 دج</option>
-      </select>
+      <form onSubmit={submit}>
+        <label>اختر الخطة:</label>
+        <select value={plan} onChange={(e) => setPlan(e.target.value)}>
+          <option value="1m">شهر — 300 دج</option>
+          <option value="6m">6 أشهر — 1500 دج</option>
+          <option value="12m">سنة — 2500 دج</option>
+        </select>
 
-      <h3 style={{ marginTop: 20 }}>📤 رفع وصل الدفع:</h3>
-      <UploadImage onUploaded={setProofUrl} />
+        <label>رفع وصل الدفع:</label>
+        <input
+          type="file"
+          accept="image/*,.pdf"
+          onChange={(e) => setFile(e.target.files[0])}
+        />
 
-      <button
-        onClick={submitVip}
-        style={{ marginTop: 20, padding: "10px 20px" }}
-      >
-        إرسال الطلب
-      </button>
+        <button disabled={loading}>
+          {loading ? "جاري الرفع..." : "إرسال الطلب"}
+        </button>
+      </form>
 
-      {msg && <p style={{ marginTop: 15 }}>{msg}</p>}
+      {msg && <p>{msg}</p>}
     </div>
   );
 }
