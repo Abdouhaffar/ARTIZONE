@@ -1,57 +1,48 @@
-// src/components/ArtisanLogin.jsx
 import React, { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebaseConfig";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 
 export default function ArtisanLogin() {
-  const navigate = useNavigate();
-
+  const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
 
   const login = async (e) => {
     e.preventDefault();
-    setMsg("");
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      setMsg("تم تسجيل الدخول بنجاح ✔");
-      setTimeout(() => navigate("/"), 1000);
+      nav("/");
     } catch (err) {
-      setMsg("خطأ في تسجيل الدخول ❌");
-      console.error(err);
+      setMsg("❌ خطأ في تسجيل الدخول");
     }
   };
 
   return (
-    <div style={{ maxWidth: 500, margin: "0 auto", padding: 20 }}>
-      <h2>تسجيل الدخول للحرفيين</h2>
+    <div className="page">
+      <h2>تسجيل دخول الحرفي</h2>
 
       <form onSubmit={login}>
-        <label>البريد الإلكتروني:</label>
         <input
           type="email"
-          required
-          value={email}
+          placeholder="البريد الإلكتروني"
           onChange={(e) => setEmail(e.target.value)}
+          required
         />
 
-        <label>كلمة المرور:</label>
         <input
           type="password"
-          required
-          value={password}
+          placeholder="كلمة المرور"
           onChange={(e) => setPassword(e.target.value)}
+          required
         />
 
-        <button type="submit" style={{ marginTop: 12 }}>
-          دخول
-        </button>
+        <button>دخول</button>
       </form>
 
-      {msg && <p style={{ marginTop: 12 }}>{msg}</p>}
+      {msg && <p>{msg}</p>}
     </div>
   );
 }
