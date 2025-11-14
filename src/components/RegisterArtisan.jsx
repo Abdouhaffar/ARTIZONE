@@ -1,183 +1,105 @@
-// src/components/RegisterArtisan.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { auth, db } from "../firebaseConfig";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { collection, addDoc } from "firebase/firestore";
-import wilayasData from "../data/wilayas.json";
+import wilayas from "../data/wilayas.json";
 
 export default function RegisterArtisan() {
-  const [name, setName] = useState("");
-  const [profession, setProfession] = useState("");
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    password: "",
+    wilaya: "",
+    daira: "",
+  });
 
-  const [wilaya, setWilaya] = useState("");
-  const [daira, setDaira] = useState("");
-  const [commune, setCommune] = useState("");
-
-  const [phone, setPhone] = useState("");
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  const [dairasList, setDairasList] = useState([]);
-  const [communesList, setCommunesList] = useState([]);
-
+  const [availableDairas, setAvailableDairas] = useState([]);
   const [msg, setMsg] = useState("");
 
-  // تحديث الدوائر عند اختيار ولاية
-  useEffect(() => {
-    if (!wilaya) return;
+  const handleWilaya = (e) => {
+    const w = e.target.value;
+    setForm({ ...form, wilaya: w });
 
-    const dairas = [
-      ...new Set(
-        wilayasData
-          .filter((w) => w.wilaya_name === wilaya)
-          .map((d) => d.daira_name)
-      ),
-    ];
+    const dair = [...new Set(wilayas.filter(x => x.wilaya_name === w).map(x => x.daira_name))];
+    setAvailableDairas(dair);
+  };
 
-    setDairasList(dairas);
-    setCommune("");
-    setCommunesList([]);
-  }, [wilaya]);
-
-  // تحديث البلديات عند اختيار دائرة
-  useEffect(() => {
-    if (!daira) return;
-
-    const communes = wilayasData
-      .filter((w) => w.daira_name === daira)
-      .map((c) => c.commune_name);
-
-    setCommunesList(communes);
-  }, [daira]);
-
-  const register = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    setMsg("");
-
     try {
-      const user = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      const acc = await createUserWithEmailAndPassword(auth, form.email, form.password);
 
       await addDoc(collection(db, "artisans"), {
-        uid: user.user.uid,
-        name,
-        profession,
-        wilaya,
-        daira,
-        commune,
-        phone,
-        email,
+        uid: acc.user.uid,
+        ...form,
         createdAt: new Date(),
       });
 
-      setMsg("تم التسجيل بنجاح ✔");
+      setMsg("✔ تم تسجيلك بنجاح!");
     } catch (err) {
-      console.error(err);
-      setMsg("حدث خطأ أثناء التسجيل ❌");
+      setMsg("حدث خطأ: " + err.message);
     }
   };
 
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto", padding: 20 }}>
+    <div className="page">
       <h2>تسجيل الحرفي</h2>
 
-      <form onSubmit={register}>
-        
-        <label>الاسم الكامل:</label>
+      <form onSubmit={submit}>
         <input
           type="text"
+          placeholder="الاسم الكامل"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
           required
-          value={name}
-          onChange={(e) => setName(e.target.value)}
         />
 
-        <label>المهنة:</label>
         <input
           type="text"
+          placeholder="رقم الهاتف"
+          value={form.phone}
+          onChange={(e) => setForm({ ...form, phone: e.target.value })}
           required
-          value={profession}
-          onChange={(e) => setProfession(e.target.value)}
         />
 
-        <label>الولاية:</label>
-        <select
-          required
-          value={wilaya}
-          onChange={(e) => setWilaya(e.target.value)}
-        >
-          <option value="">اختر الولاية</option>
-          {[
-            ...new Set(wilayasData.map((w) => w.wilaya_name)),
-          ].map((w) => (
-            <option key={w} value={w}>
-              {w}
-            </option>
-          ))}
-        </select>
-
-        <label>الدائرة:</label>
-        <select
-          required
-          value={daira}
-          onChange={(e) => setDaira(e.target.value)}
-        >
-          <option value="">اختر الدائرة</option>
-          {dairasList.map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
-        </select>
-
-        <label>البلدية:</label>
-        <select
-          required
-          value={commune}
-          onChange={(e) => setCommune(e.target.value)}
-        >
-          <option value="">اختر البلدية</option>
-          {communesList.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-
-        <label>رقم الهاتف:</label>
-        <input
-          type="text"
-          required
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
-
-        <label>البريد الإلكتروني:</label>
         <input
           type="email"
+          placeholder="البريد الإلكتروني"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
           required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
         />
 
-        <label>كلمة المرور:</label>
         <input
           type="password"
+          placeholder="كلمة المرور"
+          value={form.password}
+          onChange={(e) => setForm({ ...form, password: e.target.value })}
           required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button type="submit" style={{ marginTop: 15 }}>
-          تسجيل
-        </button>
+        <select required onChange={handleWilaya}>
+          <option value="">اختر الولاية</option>
+          {[...new Set(wilayas.map((w) => w.wilaya_name))].map((w, i) => (
+            <option key={i}>{w}</option>
+          ))}
+        </select>
 
+        <select
+          required
+          onChange={(e) => setForm({ ...form, daira: e.target.value })}
+        >
+          <option value="">اختر الدائرة</option>
+          {availableDairas.map((d, i) => (
+            <option key={i}>{d}</option>
+          ))}
+        </select>
+
+        <button type="submit">تسجيل</button>
       </form>
 
-      {msg && <p style={{ marginTop: 15 }}>{msg}</p>}
+      {msg && <p>{msg}</p>}
     </div>
   );
 }
